@@ -17,8 +17,8 @@ void signalHandler(int signal) {
 } // namespace
 
 int main() {
-  // Configure logging
-  spdlog::set_level(spdlog::level::debug);
+  // Configure logging - use warn level for benchmarking (debug is too slow)
+  spdlog::set_level(spdlog::level::warn);
   spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] [thread %t] %v");
 
   // Setup signal handlers
@@ -26,8 +26,9 @@ int main() {
   std::signal(SIGTERM, signalHandler);
 
   try {
-    // Create server on port 8080
-    httpserver::Server server(8080);
+    // Create server on port 8080 with 2x CPU cores for high concurrency
+    size_t threadPoolSize = std::thread::hardware_concurrency() * 2;
+    httpserver::Server server(8080, threadPoolSize);
 
     // Register routes
     server.get("/", [](const httpserver::HttpRequest &) {

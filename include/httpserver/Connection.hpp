@@ -96,15 +96,28 @@ public:
     return state_.load(std::memory_order_acquire) == State::Closed;
   }
 
-private:
   Socket socket_;
   std::atomic<State> state_{State::Reading};
+  std::atomic<bool> processing_{
+      false}; // Prevents concurrent I/O on same connection
 
   HttpRequest request_;
   std::string writeBuffer_;
   size_t writeOffset_ = 0;
 
   static constexpr size_t kReadBufferSize = 4096;
+
+public:
+  // Try to acquire processing lock (for thread-safe I/O dispatch)
+  bool tryStartProcessing() {
+    bool expected = false;
+    return processing_.compare_exchange_strong(expected, true,
+                                               std::memory_order_acq_rel);
+  }
+
+  void finishProcessing() {
+    processing_.store(false, std::memory_order_release);
+  }
 };
 
 } // namespace httpserver

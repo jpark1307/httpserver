@@ -102,7 +102,6 @@ void Socket::setReuseAddr() {
                              std::string(strerror(errno)));
   }
 }
-
 ssize_t Socket::recv(char *buf, size_t len) const {
   ssize_t n = ::recv(fd_, buf, len, 0);
   if (n < 0) {

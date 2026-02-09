@@ -46,26 +46,28 @@ void EventLoop::addFd(int fd, EventType type, void *userData) {
 }
 
 void EventLoop::modifyFd(int fd, EventType type, void *userData) {
-  // In kqueue, we need to delete then add with new settings
-  struct kevent changes[4];
+  struct kevent changes[2];
   int numChanges = 0;
 
-  // First disable the read filter (write filter may not exist yet)
-  EV_SET(&changes[numChanges++], fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
-
-  // Re-add desired filters
+  // Manage READ filter
   if (type == EventType::Read || type == EventType::ReadWrite) {
     EV_SET(&changes[numChanges++], fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0,
            userData);
+  } else {
+    EV_SET(&changes[numChanges++], fd, EVFILT_READ, EV_DISABLE, 0, 0, nullptr);
   }
+
+  // Manage WRITE filter
   if (type == EventType::Write || type == EventType::ReadWrite) {
     EV_SET(&changes[numChanges++], fd, EVFILT_WRITE, EV_ADD | EV_ENABLE, 0, 0,
            userData);
+  } else {
+    EV_SET(&changes[numChanges++], fd, EVFILT_WRITE, EV_DISABLE, 0, 0, nullptr);
   }
 
   // Apply changes
   int result = kevent(kqueueFd_, changes, numChanges, nullptr, 0, nullptr);
-  if (result < 0 && errno != ENOENT) { // ENOENT is OK (filter didn't exist)
+  if (result < 0 && errno != ENOENT) {
     spdlog::error("kevent(modify) failed for fd={}: {}", fd, strerror(errno));
   } else {
     spdlog::debug("Modified fd={} in kqueue, type={}", fd,

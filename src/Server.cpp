@@ -5,7 +5,7 @@
 namespace httpserver {
 
 Server::Server(uint16_t port, size_t threadPoolSize)
-    : listenSocket_(Socket::createListener(port)), eventLoop_(),
+    : listenSocket_(Socket::createListener(port, 4096)), eventLoop_(),
       threadPool_(threadPoolSize), port_(port) {
 
   // Register listening socket for accept events
@@ -46,7 +46,7 @@ void Server::run() {
     processPendingWrites();
 
     auto events =
-        eventLoop_.wait(10); // 10ms timeout to check pending writes frequently
+        eventLoop_.wait(1); // 1ms timeout to check pending writes frequently
 
     for (const auto &event : events) {
       if (event.fd == listenSocket_.fd()) {
@@ -121,12 +121,17 @@ void Server::handleRead(std::shared_ptr<Connection> conn) {
   }
 
   if (conn->hasCompleteRequest()) {
+    // Standard Thread Pool Dispatch
+    // 1. Mark connection as processing to avoid duplicate reads
     conn->setState(Connection::State::Processing);
+
+    // 2. Remove from read monitoring while processing
+    eventLoop_.removeFd(conn->fd());
 
     spdlog::debug("Request complete fd={}, submitting to thread pool",
                   conn->fd());
 
-    // Submit request processing to thread pool
+    // 3. Submit to thread pool
     auto weakConn = std::weak_ptr<Connection>(conn);
     threadPool_.submit([this, weakConn]() {
       if (auto conn = weakConn.lock()) {
@@ -138,9 +143,11 @@ void Server::handleRead(std::shared_ptr<Connection> conn) {
 
 void Server::handleWrite(std::shared_ptr<Connection> conn) {
   if (!conn->doWrite() || conn->isWriteComplete()) {
-    // Response sent - close connection (no keep-alive for simplicity)
-    spdlog::debug("Write complete fd={}, closing connection", conn->fd());
-    closeConnection(conn->fd());
+    // Response sent - reset connection for keep-alive reuse
+    spdlog::debug("Write complete fd={}, resetting for keep-alive", conn->fd());
+    conn->reset();
+    // Switch back to reading for the next request
+    eventLoop_.modifyFd(conn->fd(), EventType::Read, conn.get());
   }
 }
 
@@ -155,7 +162,8 @@ void Server::processRequest(std::shared_ptr<Connection> conn) {
 
   // Add standard headers
   response.header("Server", "httpserver/1.0");
-  response.header("Connection", "close");
+  response.header("Connection", "keep-alive");
+  response.header("Keep-Alive", "timeout=30, max=1000");
 
   // Set response and switch to writing state
   conn->setResponse(std::move(response));
@@ -179,7 +187,9 @@ void Server::processPendingWrites() {
 
   for (auto &conn : toProcess) {
     if (!conn->isClosed()) {
-      eventLoop_.modifyFd(conn->fd(), EventType::Write, conn.get());
+      // We removed the FD from kqueue during processing, so we must ADD it back
+      // for write events, not modify it.
+      eventLoop_.addFd(conn->fd(), EventType::Write, conn.get());
       spdlog::debug("Enabled write events for fd={}", conn->fd());
     }
   }

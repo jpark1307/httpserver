@@ -74,7 +74,7 @@ private:
   int kqueueFd_;
   std::atomic<bool> running_{true};
 
-  static constexpr int kMaxEvents = 256;
+  static constexpr int kMaxEvents = 4096;
 };
 
 } // namespace httpserver
