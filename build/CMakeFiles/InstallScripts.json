@@ -1,0 +1,8 @@
+{
+	"InstallScripts" : 
+	[
+		"/Users/edisonyiu/Desktop/CPP/httpserver/build/cmake_install.cmake",
+		"/Users/edisonyiu/Desktop/CPP/httpserver/build/_deps/spdlog-build/cmake_install.cmake"
+	],
+	"Parallel" : false
+}
