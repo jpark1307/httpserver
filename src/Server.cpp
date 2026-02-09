@@ -5,7 +5,7 @@
 namespace httpserver {
 
 Server::Server(uint16_t port, size_t threadPoolSize)
-    : listenSocket_(Socket::createListener(port, 4096)), eventLoop_(),
+    : listenSocket_(Socket::createListener(port, 128)), eventLoop_(),
       threadPool_(threadPoolSize), port_(port) {
 
   // Register listening socket for accept events
