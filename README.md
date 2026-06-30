@@ -94,6 +94,44 @@ curl http://localhost:8080/api/info
 wrk -t4 -c100 -d10s http://localhost:8080/health
 ```
 
+## Benchmarking 10,000 Connections on macOS
+
+The server requests a listen backlog of 16,384 by default. macOS silently
+caps that value at `kern.ipc.somaxconn`, which defaults to 128 on many
+systems. Raise the kernel limit before starting the server so the initial
+10,000-connection burst does not overflow the pending connection queue.
+
+The setting below is system-wide, requires administrator privileges, and is
+temporary until reboot. Record the current value first if you want to restore
+it manually later.
+
+```bash
+# Inspect the current limits.
+sysctl kern.ipc.somaxconn
+ulimit -n
+
+# Allow the 16,384-entry backlog requested by the server.
+sudo sysctl -w kern.ipc.somaxconn=16384
+
+# Ensure this shell and its child processes can open more than 10,000 files.
+ulimit -n 20000
+
+# Start or restart the server after changing somaxconn.
+./build-release/httpserver
+```
+
+In another terminal, confirm the active listener queue and run the benchmark:
+
+```bash
+netstat -Lan | grep '\*.8080'
+wrk -t10 -c10000 -d10s -T4s --latency http://127.0.0.1:8080/health
+```
+
+The `netstat` output should show a maximum queue length of 16,384, and `wrk`
+should complete without a `Socket errors` line. If the server warns that its
+requested backlog will be capped, change `kern.ipc.somaxconn` and restart the
+server before benchmarking.
+
 ## Adding Custom Routes
 
 Edit `src/main.cpp` to add your own routes:

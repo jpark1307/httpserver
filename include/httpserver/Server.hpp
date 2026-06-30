@@ -31,8 +31,12 @@ public:
    * Create a server listening on the specified port.
    * @param port TCP port to listen on
    * @param threadPoolSize Number of worker threads (0 = auto-detect)
+   * @param listenBacklog Maximum pending connections queue size
+   * @throws std::invalid_argument if listenBacklog is not positive
    */
-  explicit Server(uint16_t port, size_t threadPoolSize = 0);
+  explicit Server(
+      uint16_t port, size_t threadPoolSize = 0,
+      int listenBacklog = Socket::kDefaultListenBacklog);
   ~Server();
 
   // Non-copyable, non-movable

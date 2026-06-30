@@ -1,0 +1,18 @@
+Start testing: Jun 30 21:09 JST
+----------------------------------------------------------
+1/1 Testing: server_configuration
+1/1 Test: server_configuration
+Command: "/Users/edisonyiu/Desktop/CPP/httpserver/build-release/server_configuration_test"
+Directory: /Users/edisonyiu/Desktop/CPP/httpserver/build-release
+"server_configuration" start time: Jun 30 21:09 JST
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.47 sec
+----------------------------------------------------------
+Test Passed.
+"server_configuration" end time: Jun 30 21:09 JST
+"server_configuration" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Jun 30 21:09 JST

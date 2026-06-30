@@ -4,15 +4,16 @@
 
 namespace httpserver {
 
-Server::Server(uint16_t port, size_t threadPoolSize)
-    : listenSocket_(Socket::createListener(port, 128)), eventLoop_(),
+Server::Server(uint16_t port, size_t threadPoolSize, int listenBacklog)
+    : listenSocket_(Socket::createListener(port, listenBacklog)), eventLoop_(),
       threadPool_(threadPoolSize), port_(port) {
 
   // Register listening socket for accept events
   eventLoop_.addFd(listenSocket_.fd(), EventType::Read, nullptr);
 
-  spdlog::info("Server initialized on port {} with {} worker threads", port,
-               threadPool_.numWorkers());
+  spdlog::info(
+      "Server initialized on port {} with {} worker threads and backlog {}",
+      port, threadPool_.numWorkers(), listenBacklog);
 }
 
 Server::~Server() { stop(); }

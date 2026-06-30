@@ -53,3 +53,16 @@ target_link_libraries(httpserver PRIVATE httpserver_lib)
 target_compile_options(httpserver_lib PRIVATE
     -Wall -Wextra -Wpedantic -Werror
 )
+
+include(CTest)
+
+if(BUILD_TESTING)
+    add_executable(server_configuration_test
+        tests/ServerConfigurationTest.cpp
+    )
+    target_link_libraries(server_configuration_test PRIVATE httpserver_lib)
+    target_compile_options(server_configuration_test PRIVATE
+        -Wall -Wextra -Wpedantic -Werror
+    )
+    add_test(NAME server_configuration COMMAND server_configuration_test)
+endif()

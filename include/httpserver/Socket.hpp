@@ -12,6 +12,8 @@ namespace httpserver {
  */
 class Socket {
 public:
+  static constexpr int kDefaultListenBacklog = 16384;
+
   explicit Socket(int fd = -1) noexcept;
   ~Socket();
 
@@ -26,9 +28,11 @@ public:
    * @param port The port to listen on
    * @param backlog Maximum pending connections queue size
    * @return A Socket ready to accept connections
-   * @throws std::runtime_error on failure
+   * @throws std::invalid_argument if backlog is not positive
+   * @throws std::runtime_error on socket setup failure
    */
-  static Socket createListener(uint16_t port, int backlog = 4096);
+  static Socket createListener(
+      uint16_t port, int backlog = kDefaultListenBacklog);
 
   /**
    * Accept a new connection from this listening socket.

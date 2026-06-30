@@ -10,9 +10,36 @@
 #include <unistd.h>
 #include <utility>
 
+#ifdef __APPLE__
+#include <sys/sysctl.h>
+#endif
+
 #include <spdlog/spdlog.h>
 
 namespace httpserver {
+
+namespace {
+
+#ifdef __APPLE__
+void warnIfListenBacklogWillBeClamped(int requestedBacklog) {
+  int systemLimit = 0;
+  size_t systemLimitSize = sizeof(systemLimit);
+
+  if (::sysctlbyname("kern.ipc.somaxconn", &systemLimit, &systemLimitSize,
+                     nullptr, 0) == 0 &&
+      systemLimit < requestedBacklog) {
+    spdlog::warn(
+        "Requested listen backlog {} exceeds macOS "
+        "kern.ipc.somaxconn={}; the kernel will cap the backlog. Raise "
+        "kern.ipc.somaxconn before starting the server.",
+        requestedBacklog, systemLimit);
+  }
+}
+#else
+void warnIfListenBacklogWillBeClamped(int) {}
+#endif
+
+} // namespace
 
 Socket::Socket(int fd) noexcept : fd_(fd) {}
 
@@ -30,6 +57,12 @@ Socket &Socket::operator=(Socket &&other) noexcept {
 }
 
 Socket Socket::createListener(uint16_t port, int backlog) {
+  if (backlog <= 0) {
+    throw std::invalid_argument("listen backlog must be greater than zero");
+  }
+
+  warnIfListenBacklogWillBeClamped(backlog);
+
   int fd = ::socket(AF_INET, SOCK_STREAM, 0);
   if (fd < 0) {
     throw std::runtime_error("socket() failed: " +
@@ -54,7 +87,8 @@ Socket Socket::createListener(uint16_t port, int backlog) {
                              std::string(strerror(errno)));
   }
 
-  spdlog::info("Listening socket created on port {}", port);
+  spdlog::info("Listening socket created on port {} with requested backlog {}",
+               port, backlog);
   return sock;
 }
 

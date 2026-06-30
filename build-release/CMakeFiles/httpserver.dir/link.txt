@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG -arch arm64 -Wl,-search_paths_first -Wl,-headerpad_max_install_names CMakeFiles/httpserver.dir/src/main.cpp.o -o httpserver  libhttpserver_lib.a _deps/spdlog-build/libspdlog.a
